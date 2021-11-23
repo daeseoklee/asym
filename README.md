@@ -35,6 +35,8 @@ Suppose you have a vastly asymmetric set of data (Let's say some have sequence l
 A solution for this dilemma is to group the set in such a way that each group contains only the data with similar lengths, process the resulting mini-batches, and get the results back. 
 Asym allows users to write custom *Grouper* classes for this mechanism.
 
+-----------------------------------
+
 ## Examples
 Run
 ```
@@ -45,3 +47,9 @@ python3 examples.py
 ## Current limitations 
 
 * A new *length dimension* cannot be introduced in an AnnotatedModule application. This means, for example, after applying a CNN layer that shrinks image width and height, data cannot be properly unbatched. (Since you don't know which part along the shrinked length dimension should be unpadded) This will be fixed soon. 
+
+-----------------------------------
+
+## Acknowledgement
+
+This was made with the support of [Deargen Inc.](https://deargen.me/)
