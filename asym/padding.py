@@ -15,6 +15,18 @@ class Padder(metaclass=ABCMeta):
     @abstractmethod 
     def pad(self, t:Tensor, shapesig: ShapeSignature, target_shape:Tuple):
         pass
+    def merge_tensors(self, tensors:List[Tensor], shapesig: ShapeSignature) -> Tensor:
+        prestack_shapesig = shapesig.bdim_removed()
+        assert len(tensors) >= 1
+        target_shape = tensors[0].shape
+        for idx, _ in prestack_shapesig.iter_ldim_idx_label():
+            max_len = -1
+            for t in tensors:
+                if t.shape[idx] > max_len:
+                    max_len = t.shape[idx]
+            target_shape = target_shape[:idx] + (max_len,) + target_shape[idx + 1:]
+        padded_tensors = [self.pad(t, prestack_shapesig, target_shape) for t in tensors]
+        return torch.stack(padded_tensors, dim=shapesig.bdim_idx)
 
 class ZeroPadder(Padder):
     def __init__(self):
@@ -68,29 +80,13 @@ class PadderData(Data):
                 new_padding[key] = cls.padding_with_default_added(None, template[key])
             else:
                 new_padding[key] = cls.padding_with_default_added(padding[key], template[key])
-        return new_padding
-
-        
-        
+        return new_padding  
         
     @property
     def leaf_type(self):
         return Padder
 
 
-def merge_tensors(tensors:List[Tensor], shapesig: ShapeSignature, padder:Padder) -> Tensor:
-    #This affects tensors
-    prestack_shapesig = shapesig.bdim_removed()
-    assert len(tensors) >= 1
-    target_shape = tensors[0].shape
-    for idx, _ in prestack_shapesig.iter_ldim_idx_label():
-        max_len = -1
-        for t in tensors:
-            if t.shape[idx] > max_len:
-                max_len = t.shape[idx]
-        target_shape = target_shape[:idx] + (max_len,) + target_shape[idx + 1:]
-    padded_tensors = [padder.pad(t, prestack_shapesig, target_shape) for t in tensors]
-    return torch.stack(padded_tensors, dim=shapesig.bdim_idx)
 
 #testing------------------------------------
 

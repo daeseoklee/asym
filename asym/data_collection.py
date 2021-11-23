@@ -11,7 +11,7 @@ from asym.data import TensorData
 from asym.grouper import DataListGrouper
 from asym.shape_signature import ShapeSignature, ShapeSignatureData, PreShapeSignature, PreShapeSignatureData
 #from shape_match import get_output_shape
-from asym.padding import PadderData, Padder, ZeroPadder, merge_tensors
+from asym.padding import PadderData, Padder, ZeroPadder
 from asym.annotated_module import AnnotatedModule
 
 
@@ -120,7 +120,7 @@ class DataCollection:
             assert hasattr(padder, 'pad')
             assert shapesig_data.is_leaf
             shapesig = shapesig_data.value
-            return TensorData(merge_tensors([data.value for data in data_sublist], shapesig, padder))
+            return TensorData(padder.merge_tensors([data.value for data in data_sublist], shapesig))
         
         return [_get_data_group([self.data_list[i] for i in part], self.shapesig_data, padder_data) for part in partition]
             
