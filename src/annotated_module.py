@@ -206,10 +206,10 @@ def test_annotated_module():
         }
     })
     input_key_conv = {
-        '2d-feature': ('image', None), 
+        'image': ('2d-feature', None), 
         'augs': ('augs', {
-            'aug1': ('widthwise-aug', None),
-            'aug2': ('heightwise-aug', None)
+            'widthwise-aug': ('aug1', None),
+            'heightwise-aug': ('aug2', None)
         })
     }
     print(TestModule1.get_output_shapesig_data(input_shapesig_data, input_key_conv=input_key_conv).value)
