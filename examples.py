@@ -3,11 +3,11 @@ from time import time
 import torch
 import torch.nn as nn 
 
-from padding import CDimPadder
-from grouper import LengthThresholdGrouper
-from data import TensorData
-from data_collection import DataCollection 
-from annotated_module import AnnotatedModule
+from asym.padding import CDimPadder
+from asym.grouper import LengthThresholdGrouper
+from asym.data import TensorData
+from asym.data_collection import DataCollection 
+from asym.annotated_module import AnnotatedModule
 
 class Example1StrangeModule(AnnotatedModule):
     def __init__(self, dim1, dim2, dim=8):

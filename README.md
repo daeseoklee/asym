@@ -38,7 +38,6 @@ Asym allows users to write custom *Grouper* classes for this mechanism.
 ## Examples
 Run
 ```
-. ./prep.sh
 python3 examples.py
 ```
 (later, simple examples will be here in README)

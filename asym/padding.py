@@ -1,11 +1,13 @@
 from typing import Tuple, List, Dict, Any, Callable, Union
-from data import Data, DataTemplate
+from abc import ABCMeta, abstractmethod
+
 import torch
 from torch import Tensor 
-from shape_signature import ShapeSignature
-from abc import ABCMeta, abstractmethod
 from torch.nn.functional import pad as _pad
-from copy import deepcopy
+
+from asym.data import Data, DataTemplate
+from asym.shape_signature import ShapeSignature
+
 
 class Padder(metaclass=ABCMeta):
     def __init__(self):

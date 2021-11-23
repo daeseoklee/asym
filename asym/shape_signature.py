@@ -1,6 +1,7 @@
 from typing import Tuple, List, Dict, Any, Union
-from data import Data
 from torch import Tensor
+
+from asym.data import Data
 
 class PreDim:
     def __init__(self):

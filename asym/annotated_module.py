@@ -1,9 +1,10 @@
 from typing import Tuple, List, Dict, Any, Union
-from shape_signature import *
-from data import Data
+
 import torch
 import torch.nn as nn 
 
+from asym.shape_signature import *
+from asym.data import Data
 
 class ShapeConflictError(Exception): 
     def __init__(self, message):

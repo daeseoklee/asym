@@ -5,14 +5,14 @@ import torch
 from torch import Tensor
 from torch.nn.functional import pad
 
-from shape_signature import *
+from asym.shape_signature import *
 
-from data import TensorData
-from grouper import DataListGrouper
-from shape_signature import ShapeSignature, ShapeSignatureData, PreShapeSignature, PreShapeSignatureData
+from asym.data import TensorData
+from asym.grouper import DataListGrouper
+from asym.shape_signature import ShapeSignature, ShapeSignatureData, PreShapeSignature, PreShapeSignatureData
 #from shape_match import get_output_shape
-from padding import PadderData, Padder, ZeroPadder, merge_tensors
-from annotated_module import AnnotatedModule
+from asym.padding import PadderData, Padder, ZeroPadder, merge_tensors
+from asym.annotated_module import AnnotatedModule
 
 
 
