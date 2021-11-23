@@ -77,10 +77,10 @@ def example1():
         }
     }
     
-    data_list = [None, None, None]
+    data_list = []
     length_pairs = [(10, 3), (20, 6), (12, 20)]
-    for i, (num_res, num_atm) in enumerate(length_pairs):
-        data_list[i] = TensorData({
+    for num_res, num_atm in length_pairs:
+        data = TensorData({
         'protein': {
             'p': torch.rand(num_res, 8),
             'R': torch.rand(num_res, 3, 3),
@@ -91,6 +91,7 @@ def example1():
             't': torch.rand(num_atm, 3)
         }
         })  
+        data_list.append(data)
     
     print('\n*Initial (len_protein, len_ligand) pairs:')
     for num_res, num_atm in length_pairs:
