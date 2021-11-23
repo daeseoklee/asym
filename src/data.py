@@ -99,7 +99,7 @@ class Data:
             return
         for key in data1.keys():
             if data2.is_leaf or not key in data2.keys():
-                raise Exception(f'In leaf_zip_left(data1, data2), the template of data2 is not strictly bigger than the template of data1')
+                raise Exception(f'In leaf_zip_left(data1, data2), the template of data2 is not strictly bigger than the template of data1\ndata1:{data1.value},\ndata2:{data2.value}')
             yield from cls.leaf_zip_left(data1[key], data2[key])
     
     @classmethod 

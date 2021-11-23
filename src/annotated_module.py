@@ -66,14 +66,15 @@ class AnnotatedModule(nn.Module):
         if input_annot is None:
             raise AnnotationError(f'It seems get_input_annot() is not implemented for {cls}')
         input_presig_data = PreShapeSignatureData.parse(input_annot, come_from='input')
+
         if input_key_conv is not None:
-            input_presig_data = input_presig_data.keys_converted(input_key_conv)
+            input_shapesig_data = input_shapesig_data.keys_converted(input_key_conv)
+
         output_annot = cls.get_output_annot()
         if output_annot is None:
             raise AnnotationError(f'It seems get_output_annot() is not implemented for {cls}')
         output_presig_data = PreShapeSignatureData.parse(output_annot, come_from='output')
-        if output_key_conv is not None:
-            output_presig_data = output_presig_data.keys_converted(output_key_conv)
+
         conv_ldim:Dict[str, str] = {} #PreLDim label -> LDim label 
         conv_mdim:Dict[str, str] = {} #PreMDim label -> MDIm label
         conv_adim:Dict[str, List[Dim]] = {} #ADim label -> Sequence of Dim 
@@ -160,8 +161,12 @@ class AnnotatedModule(nn.Module):
                 else:
                     raise AnnotationError(f'The {predim} in {presig} is strange.')
             return ShapeSignature(l)
-                    
-        return Data.map(conv_presig, output_presig_data)
+        
+        output_shapesig_data = ShapeSignatureData.map(conv_presig, output_presig_data)
+        if output_key_conv is not None:
+            output_shapesig_data = output_shapesig_data.keys_converted(output_key_conv)
+            
+        return output_shapesig_data
 
 #test-----------
 class TestModule1(AnnotatedModule):

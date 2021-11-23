@@ -10,14 +10,50 @@ from data_collection import DataCollection
 from annotated_module import AnnotatedModule
 
 class Example1StrangeModule(AnnotatedModule):
-    def __init__(self):
+    def __init__(self, dim1, dim2, dim=8):
         super().__init__()
-    def forward(self):
-        pass 
+        self.dim1 = dim1
+        self.dim2 = dim2
+        self.dim = dim 
+        self.linear1 = nn.Linear(dim1, dim)
+        self.linear2 = nn.Linear(dim2, dim)
+    def forward(self, d):
+        x1 = d['objects1']['feature']
+        v1 = d['objects1']['position']
+        x2 = d['objects2']['feature']
+        v2 = d['objects2']['position']
+        assert v1.shape[-1] == v2.shape[-1] == 3
+        N = x1.shape[0]
+        assert N == v1.shape[0] == x2.shape[0] == v2.shape[0]
+        assert x1.shape[-1] == self.dim1 and x2.shape[-1] == self.dim2
+        x1 = self.linear1(x1)
+        x2 = self.linear2(x2)
+
+        shape1 = x1.shape[1:-1]
+        shape2 = x2.shape[1:-1]
+        one1 = tuple([1 for _ in range(len(shape1))])
+        one2 = tuple([1 for _ in range(len(shape2))])
+        x1_reshaped = x1.reshape((N,)+shape1+one2+(self.dim,)).broadcast_to((N,)+shape1+shape2+(self.dim,))
+        x2_reshaped = x2.reshape((N,)+one1+shape2+(self.dim,)).broadcast_to((N,)+shape1+shape2+(self.dim,))
+        v1_reshaped = v1.reshape((N,)+shape1+one2+(3,)).broadcast_to((N,)+shape1+shape2+(3,))
+        v2_reshaped = v2.reshape((N,)+one1+shape2+(3,)).broadcast_to((N,)+shape1+shape2+(3,))
+        dot_product = torch.sum(x1_reshaped * x2_reshaped, dim=-1)
+        squared_dist = torch.sum((v1_reshaped - v2_reshaped) ** 2, dim=-1)
+        return dot_product * squared_dist
+        
     def get_input_annot():
-        pass
+        return {
+            'objects1': {
+                'feature': '(b, .., m_1)',
+                'position': '(b, .., 3)'
+            },
+            'objects2': {
+                'feature': '(b, .2., m_2)',
+                'position': '(b, .2., 3)'
+            }
+        }
     def get_output_annot():
-        pass
+        return '(b, .., .2.)'
 
 def example1():
 
@@ -42,7 +78,8 @@ def example1():
     }
     
     data_list = [None, None, None]
-    for i, (num_res, num_atm) in enumerate([(10, 3), (20, 6), (12, 20)]):
+    length_pairs = [(10, 3), (20, 6), (12, 20)]
+    for i, (num_res, num_atm) in enumerate(length_pairs):
         data_list[i] = TensorData({
         'protein': {
             'p': torch.rand(num_res, 8),
@@ -54,6 +91,10 @@ def example1():
             't': torch.rand(num_atm, 3)
         }
         })  
+    
+    print('\n*Initial (len_protein, len_ligand) pairs:')
+    for num_res, num_atm in length_pairs:
+        print((num_res, num_atm))
 
     dc = DataCollection(shape_annot, data_list=data_list)
     dc.group(grouper = LengthThresholdGrouper('res', [15]), padding=padding)
@@ -84,7 +125,21 @@ def example1():
     print('first group shape of "p":', g['p'].value.shape)
     print('first group shape of "R":', g['R'].value.shape)
     
-    
+    key_conv = {
+        'protein': ('objects1', {
+            'p': ('feature', None),
+            't': ('position', None)
+        }),
+        'ligand': ('objects2', {
+            'm': ('feature', None),
+            't': ('position', None)
+        })
+    }
+    result = dc.apply(Example1StrangeModule(8, 4), input_key_conv=key_conv, require_mask=False)
+    result.ungroup() 
+    print('\n* Shapes after applying Example1StrangeModule():')
+    for data in result.data_list:
+        print(data.value.shape) 
     b = time()
     print(f'\ntime: {b-a} seconds')
     

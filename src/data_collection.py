@@ -206,16 +206,19 @@ class DataCollection:
             ldim_label_map = {idx: label for idx, label in shapesig.iter_ldim_idx_label()}
             masks = [] 
             mask_shape = t.shape[:bdim_idx] + (1,) + t.shape[bdim_idx:]
-            for i in range(len(t.shape[bdim_idx])):
+            for i in range(t.shape[bdim_idx]):
                 axis_tensors = [torch.tensor([k < length_info[ldim_label_map[dim_idx]][i] if dim_idx in ldim_label_map else dim_size for k in range(dim_size)], device=t.device) for dim_idx, dim_size in enumerate(t.shape) if dim_idx != bdim_idx]
                 mask = torch.cartesian_prod(*axis_tensors).all(dim=-1).reshape(mask_shape)
                 masks.append(mask)
             return torch.cat(masks, dim=bdim_idx)
-            
-        return TensorData(_get_mask_d(group.value, self.shapesig_data.value)).keys_converted(key_conv=key_conv, reversed=True)
+        
+        mask_data = TensorData(_get_mask_d(group.value, self.shapesig_data.value))
+        if key_conv is not None:
+            mask_data = mask_data.keys_converted(key_conv=key_conv)
+        return mask_data
                 
 
-    def apply(self, f:AnnotatedModule, with_mask=True, input_key_conv=None, output_key_conv=None) -> 'DataCollection':
+    def apply(self, f:AnnotatedModule, require_mask=True, input_key_conv=None, output_key_conv=None) -> 'DataCollection':
         """
         """
         if not self.is_grouped:
@@ -223,11 +226,14 @@ class DataCollection:
         
         output_shapesig_data = type(f).get_output_shapesig_data(self.shapesig_data, input_key_conv=input_key_conv, output_key_conv=output_key_conv)
         
-        key_converted_data_groups = [group.keys_converted(input_key_conv, reversed=True) for group in self.data_groups]
-        if with_mask:
-            new_data_groups = [f(group) for group in key_converted_data_groups]
+        key_converted_data_groups = [group.keys_converted(input_key_conv) for group in self.data_groups]
+        if require_mask:
+            new_data_groups = [TensorData(f(group.value, self.get_mask_data(i, key_conv=input_key_conv).value)) for i, group in enumerate(key_converted_data_groups)]
         else:
-            new_data_groups = [f(group, self.get_mask_data(i, key_conv=input_key_conv)) for i, group in enumerate(key_converted_data_groups)]
+            new_data_groups = [TensorData(f(group.value)) for group in key_converted_data_groups]
+        
+        if output_key_conv is not None:
+            new_data_groups = [group.keys_converted(output_key_conv) for group in new_data_groups]
                 
         new_length_info = {label: info for label, info in self.length_info.items() if label in output_shapesig_data.ldim_map}
 
