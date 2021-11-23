@@ -17,7 +17,7 @@ from asym.annotated_module import AnnotatedModule
 
 
 class DataCollection:
-    def __init__(self, shape_annot:Union[ShapeSignatureData, Dict[str, Union[str, Any]]], data_list:List[TensorData]=None, data_groups:List[TensorData]=None, length_info:Dict[str, List[List[int]]]=None, data_partition:List[Tuple[int, int]]=None,validate=False):
+    def __init__(self, shape_annot:Union[ShapeSignatureData, Dict[str, Union[str, Any]]], data_list:List[TensorData]=None, data_groups:List[TensorData]=None, length_info:Dict[str, List[List[int]]]=None, data_partition:List[Tuple[int, int]]=None, padding:Union[PadderData, Padder, Dict[str, Any]]=None, validate=False):
         """ 
         There are two ways of initializing DataCollection:
             1. providing a data_list 
@@ -49,7 +49,13 @@ class DataCollection:
             self.length_info = length_info
             self.data_partition = data_partition
             self.is_grouped = True
-        
+        if padding is not None:
+            if type(padding) == PadderData:
+                self.preset_padder_data = padding
+            else:
+                self.preset_padder_data = PadderData(padding, template=self.shapesig_data.get_template())
+        else:
+            self.preset_padder_data = None
         if validate:
             self.validate()
             
@@ -169,7 +175,12 @@ class DataCollection:
     def group(self, grouper:DataListGrouper, padding:Union[Padder, Dict[str, Any]]=None, forget_order=False):
         if self.is_grouped:
             raise Exception('Already grouped, call ungroup() first')
-        padder_data = PadderData(padding, template=self.shapesig_data.get_template())
+        if self.preset_padder_data is not None:
+            if padding is not None:
+                raise Exception('There are pre-set padders')
+            padder_data = self.preset_padder_data
+        else:
+            padder_data = PadderData(padding, template=self.shapesig_data.get_template())
         data_partition = grouper.get_data_partition(self.data_list, self.shapesig_data)
         self.length_info = self.get_length_info(data_partition)
         self.data_groups = self.get_data_groups(data_partition, padder_data)
