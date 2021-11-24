@@ -28,17 +28,16 @@ class AnnotationError(Exception):
 class AnnotatedModule(nn.Module, metaclass=ABCMeta):
     def __init__(self):
         super().__init__()
-    @abstractclassmethod
-    def requires_mask(cls) -> bool:
+    @abstractmethod
+    def requires_mask(self) -> bool:
         pass
-    @abstractclassmethod
-    def get_input_annot(cls) -> Union[str, Dict[str, Any]]:
+    @abstractmethod
+    def get_input_annot(self) -> Union[str, Dict[str, Any]]:
         pass
-    @abstractclassmethod
-    def get_output_annot(cls) -> Union[str, Dict[str, Any]]:
+    @abstractmethod
+    def get_output_annot(self) -> Union[str, Dict[str, Any]]:
         pass
-    @classmethod 
-    def get_output_shapesig_data(cls, input_shapesig_data:ShapeSignatureData, input_key_conv=None, output_key_conv=None) -> ShapeSignatureData:
+    def get_output_shapesig_data(self, input_shapesig_data:ShapeSignatureData, input_key_conv=None, output_key_conv=None) -> ShapeSignatureData:
         """
         Description:
             Given input_presig_data(parsed from self.get_input_annot()), output_presig_data(parsed from self.get_output_annot()) and input_shapesig_data, get output_shapesig_data by:
@@ -67,17 +66,17 @@ class AnnotatedModule(nn.Module, metaclass=ABCMeta):
         Returns:
             ShapeSignatureData: [description]
         """
-        input_annot = cls.get_input_annot()
+        input_annot = self.get_input_annot()
         if input_annot is None:
-            raise AnnotationError(f'It seems get_input_annot() is not implemented for {cls}')
+            raise AnnotationError(f'It seems get_input_annot() is not implemented for {type(self)}')
         input_presig_data = PreShapeSignatureData.parse(input_annot, come_from='input')
 
         if input_key_conv is not None:
             input_shapesig_data = input_shapesig_data.keys_converted(input_key_conv)
 
-        output_annot = cls.get_output_annot()
+        output_annot = self.get_output_annot()
         if output_annot is None:
-            raise AnnotationError(f'It seems get_output_annot() is not implemented for {cls}')
+            raise AnnotationError(f'It seems get_output_annot() is not implemented for {type(self)}')
         output_presig_data = PreShapeSignatureData.parse(output_annot, come_from='output')
 
         conv_ldim:Dict[str, str] = {} #PreLDim label -> LDim label 
@@ -177,24 +176,24 @@ class AnnotatedModule(nn.Module, metaclass=ABCMeta):
 class TestModule1(AnnotatedModule):
     def __init__(self):
         super().__init__()
-    def requires_mask():
+    def requires_mask(self):
         return True
-    def get_input_annot():
+    def get_input_annot(self):
         return {
             '2d-feature': '(b, l_1, l_2, .., m_1)', 
             'augs': {
                 'aug1': '(b, l_1, l_3, .?., m_2)'
             }
         }
-    def get_output_annot():
+    def get_output_annot(self):
         return '(b, l_1, .., l_3, .?., m_3)'
 
 class TestModule2(AnnotatedModule):
     def __init__(self):
         super().__init__()
-    def requires_mask():
+    def requires_mask(self):
         return True
-    def get_input_annot():
+    def get_input_annot(self):
         return {
             '2d-feature': '(b, l_1, l_2, .., m_1)', 
             'augs': {
@@ -202,7 +201,7 @@ class TestModule2(AnnotatedModule):
                 'aug2': '(b, l_2, ..)'
             }
         }
-    def get_output_annot():
+    def get_output_annot(self):
         return '(b)'
     
 def test_annotated_module():
@@ -220,10 +219,10 @@ def test_annotated_module():
             'heightwise-aug': ('aug2', None)
         })
     }
-    print(TestModule1.get_output_shapesig_data(input_shapesig_data, input_key_conv=input_key_conv).value)
+    print(TestModule1().get_output_shapesig_data(input_shapesig_data, input_key_conv=input_key_conv).value)
     print()
     try:
-        TestModule2.get_output_shapesig_data(input_shapesig_data, input_key_conv=input_key_conv)
+        TestModule2().get_output_shapesig_data(input_shapesig_data, input_key_conv=input_key_conv)
     except ShapeConflictError as e:
         print(f'This error was expected: {e}')
     else:
