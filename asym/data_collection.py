@@ -10,8 +10,7 @@ from asym.shape_signature import *
 from asym.data import TensorData
 from asym.grouper import DataListGrouper
 from asym.shape_signature import ShapeSignature, ShapeSignatureData, PreShapeSignature, PreShapeSignatureData
-#from shape_match import get_output_shape
-from asym.padding import PadderData, Padder, ZeroPadder
+from asym.padding import PadderData, Padder
 from asym.annotated_module import AnnotatedModule
 
 
@@ -25,7 +24,7 @@ class DataCollection:
                 -data_groups 
                 -length_info
                 -data_partition (optional)
-        It is always either in "grouped" or "grouped" form. Being grouped means the data list is partitioned into several parts and each part form a singe TensorData object after paddings
+        It is always either in "grouped" or "ungrouped" form. Being grouped means the data list is partitioned into several parts and each part form a singe TensorData object after paddings
         """
         if type(shape_annot) == ShapeSignatureData:
             self.shapesig_data = shape_annot
@@ -229,19 +228,20 @@ class DataCollection:
         return mask_data
                 
 
-    def apply(self, f:AnnotatedModule, require_mask=True, input_key_conv=None, output_key_conv=None) -> 'DataCollection':
+    def apply(self, module:AnnotatedModule, require_mask=True, input_key_conv=None, output_key_conv=None) -> 'DataCollection':
         """
         """
         if not self.is_grouped:
             raise Exception('Currently can apply AnnotatedModule only when the DataCollection is "grouped"')
         
-        output_shapesig_data = type(f).get_output_shapesig_data(self.shapesig_data, input_key_conv=input_key_conv, output_key_conv=output_key_conv)
+        module_class = type(module)
+        output_shapesig_data = module_class.get_output_shapesig_data(self.shapesig_data, input_key_conv=input_key_conv, output_key_conv=output_key_conv)
         
         key_converted_data_groups = [group.keys_converted(input_key_conv) for group in self.data_groups]
-        if require_mask:
-            new_data_groups = [TensorData(f(group.value, self.get_mask_data(i, key_conv=input_key_conv).value)) for i, group in enumerate(key_converted_data_groups)]
+        if module_class.requires_mask():
+            new_data_groups = [TensorData(module(group.value, self.get_mask_data(i, key_conv=input_key_conv).value)) for i, group in enumerate(key_converted_data_groups)]
         else:
-            new_data_groups = [TensorData(f(group.value)) for group in key_converted_data_groups]
+            new_data_groups = [TensorData(module(group.value)) for group in key_converted_data_groups]
         
         if output_key_conv is not None:
             new_data_groups = [group.keys_converted(output_key_conv) for group in new_data_groups]

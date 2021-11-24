@@ -1,4 +1,5 @@
 from typing import Tuple, List, Dict, Any, Union
+from abc import ABCMeta, abstractclassmethod, abstractmethod
 
 import torch
 import torch.nn as nn 
@@ -24,13 +25,16 @@ class AnnotationError(Exception):
     def __str__(self):
         return self.message
 
-class AnnotatedModule(nn.Module):
+class AnnotatedModule(nn.Module, metaclass=ABCMeta):
     def __init__(self):
         super().__init__()
-    @classmethod
+    @abstractclassmethod
+    def requires_mask(cls) -> bool:
+        pass
+    @abstractclassmethod
     def get_input_annot(cls) -> Union[str, Dict[str, Any]]:
         pass
-    @classmethod
+    @abstractclassmethod
     def get_output_annot(cls) -> Union[str, Dict[str, Any]]:
         pass
     @classmethod 
@@ -173,7 +177,8 @@ class AnnotatedModule(nn.Module):
 class TestModule1(AnnotatedModule):
     def __init__(self):
         super().__init__()
-    
+    def requires_mask():
+        return True
     def get_input_annot():
         return {
             '2d-feature': '(b, l_1, l_2, .., m_1)', 
@@ -187,6 +192,8 @@ class TestModule1(AnnotatedModule):
 class TestModule2(AnnotatedModule):
     def __init__(self):
         super().__init__()
+    def requires_mask():
+        return True
     def get_input_annot():
         return {
             '2d-feature': '(b, l_1, l_2, .., m_1)', 
