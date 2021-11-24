@@ -33,7 +33,7 @@ Suppose you have a vastly asymmetric set of data (Let's say some have sequence l
 2. Processing them in mini-batches, which may require gross amounts of padding if you plainly do so.
 
 A solution for this dilemma is to group the set in such a way that each group contains only the data with similar lengths, process the resulting mini-batches, and get the results back. 
-Asym allows users to write custom *Grouper* classes for this mechanism.
+Asym allows users to easily carry out this procedure with their custom *Grouper* classes. 
 
 -----------------------------------
 

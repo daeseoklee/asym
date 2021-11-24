@@ -6,7 +6,7 @@ from torch import Tensor
 from torch.nn.functional import pad
 
 from asym.shape_signature import *
-from asym.data import Data, TensorData
+from asym.data import TensorData
 
 class DataListGrouper(metaclass=ABCMeta):
     def __init__(self):
