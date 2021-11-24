@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn 
 
 from asym.padding import CDimPadder
-from asym.grouper import LengthThresholdGrouper
+from asym.grouper import UniGrouper, LengthThresholdGrouper
 from asym.data import TensorData
-from asym.data_collection import DataCollection 
+from asym.data_collection import DataCollection, IncompatibleDataCollectionError
 from asym.annotated_module import AnnotatedModule
 
 class Example1StrangeModule(AnnotatedModule):
@@ -130,7 +130,14 @@ def example1():
     dc['duplicate'] = deepcopy(dc)
     print('\n* After __setitem__("duplicate")')
     print(dc.shapesig_data.get_template().value) #Observe added keys
-    
+
+    try:
+        another_dc = deepcopy(dc)
+        another_dc.regroup(UniGrouper())
+        dc['another_duplicate'] = another_dc 
+    except IncompatibleDataCollectionError as e:
+        print('\nThis __setitem__() is invalidated since the two collections are incompatible')
+
     key_conv = {
         'protein': ('objects1', {
             'p': ('feature', None),

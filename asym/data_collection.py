@@ -1,5 +1,6 @@
 from typing import Tuple, List, Dict, Any, Callable, Union
 from abc import ABCMeta, abstractmethod
+from time import time
 
 import torch 
 from torch import Tensor
@@ -14,9 +15,14 @@ from asym.padding import PadderData, Padder
 from asym.annotated_module import AnnotatedModule
 
 
+class IncompatibleDataCollectionError(Exception):
+    def __init__(self, message):
+        self.message = message
+    def __str__(self):
+        return self.message
 
 class DataCollection:
-    def __init__(self, shape_annot:Union[ShapeSignatureData, Dict[str, Union[str, Any]]], data_list:List[TensorData]=None, data_groups:List[TensorData]=None, length_info:Dict[str, List[List[int]]]=None, data_partition:List[Tuple[int, int]]=None, padding:Union[PadderData, Padder, Dict[str, Any]]=None, validate=False):
+    def __init__(self, shape_annot:Union[ShapeSignatureData, Dict[str, Union[str, Any]]], data_list:List[TensorData]=None, data_groups:List[TensorData]=None, length_info:Dict[str, List[List[int]]]=None, data_partition:List[Tuple[int, int]]=None, check_hash=True, _hash=None, padding:Union[PadderData, Padder, Dict[str, Any]]=None, validate=False):
         """ 
         There are two ways of initializing DataCollection:
             1. providing a data_list 
@@ -25,6 +31,8 @@ class DataCollection:
                 -length_info
                 -data_partition (optional)
         It is always either in "grouped" or "ungrouped" form. Being grouped means the data list is partitioned into several parts and each part form a singe TensorData object after paddings
+        
+        The "compatibility" is tracked along method calls using the internal _hash value. Each call of .ungroup() or .group() change the _hash value. For example, one cannot dc1[key] = dc2 if dc1._hash != dc2._hash   
         """
         if type(shape_annot) == ShapeSignatureData:
             self.shapesig_data = shape_annot
@@ -57,7 +65,17 @@ class DataCollection:
             self.preset_padder_data = None
         if validate:
             self.validate()
-            
+        self.check_hash = check_hash
+        self.update_hash_(given_hash=_hash)
+
+    def update_hash_(self, given_hash=None):
+        if not self.check_hash:
+            return
+        if given_hash is None:
+            self._hash = time()
+        else:
+            self._hash = given_hash
+
     def __len__(self):
         if self.is_grouped:
             keys, idx = self.shapesig_data.bdim_loc
@@ -189,6 +207,7 @@ class DataCollection:
             self.data_partition = data_partition
         self.data_list = None
         self.is_grouped = True
+        self.update_hash_()
         
     def ungroup(self):
         if not self.is_grouped:
@@ -199,6 +218,7 @@ class DataCollection:
         self.length_info = None
         self.data_partition = None
         self.is_grouped = False
+        self.update_hash_()
 
     def regroup(self, grouper:DataListGrouper, padding:Union[Padder, Dict[str, Any]]=None, forget_order=False):
         self.ungroup()
@@ -251,7 +271,7 @@ class DataCollection:
                 
         new_length_info = {label: info for label, info in self.length_info.items() if label in output_shapesig_data.ldim_map}
 
-        return DataCollection(output_shapesig_data, data_groups=new_data_groups, length_info=new_length_info, data_partition=self.data_partition)
+        return DataCollection(output_shapesig_data, data_groups=new_data_groups, length_info=new_length_info, data_partition=self.data_partition, check_hash=self.check_hash, _hash=self._hash)
     
     def __getitem__(self, key:str) -> 'DataCollection':
         if self.shapesig_data.is_leaf:
@@ -262,12 +282,14 @@ class DataCollection:
         if self.is_grouped:
             data_groups = [group[key] for group in self.data_groups]
             length_info = {key: val for key, val in self.length_info.items() if key in shapesig_data.ldim_map}
-            return DataCollection(shapesig_data, data_groups=data_groups, length_info=length_info, data_partition=self.data_partition)
+            return DataCollection(shapesig_data, data_groups=data_groups, length_info=length_info, data_partition=self.data_partition, check_hash=self.check_hash, _hash=self._hash)
         else:
             data_list = [data[key] for data in self.data_list]
-            return DataCollection(shapesig_data, data_list=data_list)
+            return DataCollection(shapesig_data, data_list=data_list, check_hash=self.check_hash, _hash=self._hash)
         
     def __setitem__(self, key:str, sub:'DataCollection'):
+        if self.check_hash and self._hash != sub._hash:
+            raise IncompatibleDataCollectionError(f'It seems two DataCollections are not compatible, so you cannot __setitem__ one into another.')
         if self.is_grouped:
             for group, sub_group in zip(self.data_groups, sub.data_groups):
                 group:TensorData
