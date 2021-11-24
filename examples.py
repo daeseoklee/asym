@@ -1,4 +1,5 @@
 from time import time
+from copy import deepcopy
 
 import torch
 import torch.nn as nn 
@@ -110,8 +111,7 @@ def example1():
     #print(g['protein']['R'].value[:, -3:]) #Observe the identity paddings
     
 
-    dc.ungroup()
-    dc.group(grouper = LengthThresholdGrouper('atm', [10]))
+    dc.regroup(grouper = LengthThresholdGrouper('atm', [10]))
     
     g = dc.data_groups[0]
     print('\n* second grouping:')
@@ -126,6 +126,10 @@ def example1():
     print('\n* In __getitem__("protein"):')
     print('first group shape of "p":', g['p'].value.shape)
     print('first group shape of "R":', g['R'].value.shape)
+    
+    dc['duplicate'] = deepcopy(dc)
+    print('\n* After __setitem__("duplicate")')
+    print(dc.shapesig_data.get_template().value) #Observe added keys
     
     key_conv = {
         'protein': ('objects1', {

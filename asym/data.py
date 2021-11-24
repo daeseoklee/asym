@@ -24,6 +24,13 @@ class Data:
         cls = type(self)
         return cls(self.value[key])
     
+    def __setitem__(self, key:str, sub:'Data'):
+        if self.is_leaf:
+            raise Exception('The data is a leaf')
+        if type(sub) != type(self):
+            raise Exception()
+        self.value[key] = sub.value
+    
     def __contains__(self, key:str):
         return key in self.value.keys()
     

@@ -200,6 +200,10 @@ class DataCollection:
         self.data_partition = None
         self.is_grouped = False
 
+    def regroup(self, grouper:DataListGrouper, padding:Union[Padder, Dict[str, Any]]=None, forget_order=False):
+        self.ungroup()
+        self.group(grouper, padding=padding, forget_order=forget_order)
+
     def get_grand_batch(self):
         pass
     
@@ -262,6 +266,18 @@ class DataCollection:
         else:
             data_list = [data[key] for data in self.data_list]
             return DataCollection(shapesig_data, data_list=data_list)
+        
+    def __setitem__(self, key:str, sub:'DataCollection'):
+        if self.is_grouped:
+            for group, sub_group in zip(self.data_groups, sub.data_groups):
+                group:TensorData
+                sub_group:TensorData
+                group[key] = sub_group 
+            self.length_info.update(sub.length_info)    
+        else:
+            for data, sub_data in zip(self.data_groups, sub.data_groups):
+                data[key] = sub_data
+        self.shapesig_data[key] = sub.shapesig_data
     
     @classmethod 
     def combine(cls, dc_dict:Union['DataCollection', Dict[str, Any]]) -> 'DataCollection':
