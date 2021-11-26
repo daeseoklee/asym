@@ -232,23 +232,25 @@ class DataCollection:
     def get_mask_data(self, i:int, key_conv=None) -> TensorData:
         group = self.data_groups[i]
         length_info = self.get_group_length_info(i)
-        def _get_mask_d(t:Union[Tensor, Dict[str, Any]], shapesig:Union[ShapeSignature, Dict[str, Any]]):
-            if type(shapesig) == dict:
-                assert type(t) == dict
-                return {key: _get_mask_d(t[key], shapesig[key]) for key in shapesig}
-            assert type(shapesig) == ShapeSignature
-            assert type(t) == Tensor 
+        def _get_mask(t:Tensor, shapesig:ShapeSignature):
+
             bdim_idx = shapesig.bdim_idx 
             ldim_label_map = {idx: label for idx, label in shapesig.iter_ldim_idx_label()}
-            masks = [] 
-            mask_shape = t.shape[:bdim_idx] + (1,) + t.shape[bdim_idx:]
-            for i in range(t.shape[bdim_idx]):
-                axis_tensors = [torch.tensor([k < length_info[ldim_label_map[dim_idx]][i] if dim_idx in ldim_label_map else dim_size for k in range(dim_size)], device=t.device) for dim_idx, dim_size in enumerate(t.shape) if dim_idx != bdim_idx]
-                mask = torch.cartesian_prod(*axis_tensors).all(dim=-1).reshape(mask_shape)
-                masks.append(mask)
-            return torch.cat(masks, dim=bdim_idx)
+            if len(ldim_label_map) == 0:
+                return torch.ones_like(t, dtype=bool)
+            inst_mask_shape = t.shape[:bdim_idx] + (1,) + t.shape[bdim_idx+1:]
+            
+            def get_shape_at(dim_idx):
+                return (1,) * dim_idx + (t.shape[dim_idx],) + (1,) * (len(t.shape) - dim_idx - 1)
+            
+            def _get_mask_at(inst_idx):
+                masks = [(torch.arange(t.shape[ldim_idx], device=t.device) < length_info[ldim_label][inst_idx]).reshape(get_shape_at(ldim_idx)).broadcast_to(inst_mask_shape) for ldim_idx, ldim_label in ldim_label_map.items()]
+                return torch.any(torch.stack(masks, dim=0), dim=0)
+            
+            masks = [_get_mask_at(inst_idx) for inst_idx in range(t.shape[bdim_idx])]
+            return torch.cat(masks, dim=bdim_idx) 
         
-        mask_data = TensorData(_get_mask_d(group.value, self.shapesig_data.value))
+        mask_data = TensorData.map2(_get_mask, group, self.shapesig_data)
         if key_conv is not None:
             mask_data = mask_data.keys_converted(key_conv=key_conv)
         return mask_data

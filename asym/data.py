@@ -128,6 +128,15 @@ class Data:
             return f(d)
         return cls(_map(data.value))
     
+    @classmethod 
+    def map2(cls, f:Callable[[Any, Any], Any], data1:'Data', data2:'Data') -> 'Data':
+        #[cls] is the return type 
+        def _map2(d1, d2):
+            if type(d1) == dict:
+                return {key: _map2(d1[key], d2[key]) for key in d1}
+            return f(d1, d2)
+        return cls(_map2(data1.value, data2.value))
+    
 class DataTemplate(Data):
     def __init__(self, value:Union[None, Dict[str, Any]]):
         super().__init__(value)
