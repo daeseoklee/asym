@@ -137,9 +137,15 @@ class DataTemplate(Data):
 
 
 class TensorData(Data):
-    def __init__(self, value:Union[Tensor, Dict[str, Any]]):
+    def __init__(self, value:Union['TensorData', Tensor, Dict[str, Any]]):
         super().__init__(value)
     @property
     def leaf_type(self):
         return Tensor
+    def to_device(self, device):
+        def _to_device(d):
+            if type(d) == dict:
+                return {key: _to_device(val) for key, val in d.items()}
+            return d.to(device=device)
+        return TensorData(_to_device(self.value))
 

@@ -41,21 +41,23 @@ class DataCollection:
         if data_list is not None:
             if data_groups is not None or length_info is not None or data_partition is not None:
                 raise Exception('either data_list or all of [data_groups, length_info, data_partition] should be provided')
-            self.data_list = data_list
+            self.data_list = [data if type(data) == TensorData else TensorData(data) for data in data_list]
             self.data_groups = None
             self.length_info = None
             self.data_partition = None
             self.is_grouped = False
-        if data_groups is not None:
+        elif data_groups is not None:
             if data_list is not None or length_info is None:
                 raise Exception('either data_list or all of [data_groups, length_info] should be provided')
             if data_partition is None:
                 data_partition = DataCollection.get_default_data_partition(data_groups, self.shapesig_data) 
             self.data_list = None
-            self.data_groups = data_groups
+            self.data_groups = [group if type(group) == TensorData else TensorData(group) for group in data_groups]
             self.length_info = length_info
             self.data_partition = data_partition
             self.is_grouped = True
+        else:
+            raise Exception('either data_list or all of [data_groups, length_info] should be provided')
         if padding is not None:
             if type(padding) == PadderData:
                 self.preset_padder_data = padding
@@ -250,7 +252,20 @@ class DataCollection:
         if key_conv is not None:
             mask_data = mask_data.keys_converted(key_conv=key_conv)
         return mask_data
-                
+    
+    def to_device(self, device):
+        #TODO: Should _hash be updated??
+        if self.preset_padder_data is None:
+            new_padding = None
+        else:
+            new_padding = self.preset_padder_data.to_device(device)
+        if self.is_grouped:
+            new_data_groups = [group.to_device(device) for group in self.data_groups]
+            dc = DataCollection(self.shapesig_data, data_groups=new_data_groups, length_info=self.length_info, data_partition=self.data_partition, check_hash=self.check_hash, _hash=self._hash, padding=new_padding)
+        else:
+            new_data_list = [data.to_device(device) for data in self.data_list]
+            dc = DataCollection(self.shapesig_data, data_list=new_data_list, check_hash=self.check_hash, _hash=self._hash, padding=new_padding)
+        return dc
 
     def apply(self, module:AnnotatedModule, require_mask=True, input_key_conv=None, output_key_conv=None) -> 'DataCollection':
         """
@@ -305,3 +320,19 @@ class DataCollection:
     def combine(cls, dc_dict:Union['DataCollection', Dict[str, Any]]) -> 'DataCollection':
         pass
 
+
+#testing 
+def test_to_device():
+    from asym.padding import CDimPadder
+    data_list=[{'a':torch.rand(2,3), 'b':torch.tensor(1.0)}, {'aa':torch.rand(4,3), 'b':torch.tensor(2.0)}]
+    shape_annot = {'a':'(B,L_len,3)', 'b':'(B, 1)'}
+    padding={'a':CDimPadder(torch.tensor([1.,0,0]))}
+    dc1 = DataCollection(shape_annot, data_list=data_list, padding=padding)
+    dc2 = dc1.to_device(torch.device('cuda:0'))
+    print(dc2.data_list[0].value)
+    print(dc2.preset_padder_data['a'].value.value)
+    
+    
+if __name__ == '__main__':
+    test_to_device()
+    

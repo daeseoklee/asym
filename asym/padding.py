@@ -15,6 +15,9 @@ class Padder(metaclass=ABCMeta):
     @abstractmethod 
     def pad(self, t:Tensor, shapesig: ShapeSignature, target_shape:Tuple):
         pass
+    @abstractmethod
+    def to_device(self, device) -> 'Padder':
+        pass
     def merge_tensors(self, tensors:List[Tensor], shapesig: ShapeSignature) -> Tensor:
         prestack_shapesig = shapesig.bdim_removed()
         assert len(tensors) >= 1
@@ -38,6 +41,8 @@ class ZeroPadder(Padder):
         for i in range(len(target_shape) - 1, -1, -1):
             nums += [0, target_shape[i] - t.shape[i]]
         return _pad(t, tuple(nums), mode='constant', value=0) 
+    def to_device(self, device):
+        return self
 
 class CDimPadder(Padder):
     def __init__(self, value:Tensor):
@@ -55,6 +60,8 @@ class CDimPadder(Padder):
             broadcast_shape = t.shape[:i] + (target_shape[i] - t.shape[i],) + t.shape[i + 1:]
             t = torch.cat([t, v.broadcast_to(broadcast_shape)], dim=i)
         return t
+    def to_device(self, device):
+        return CDimPadder(self.value.to(device=device))
         
     
 
@@ -85,6 +92,11 @@ class PadderData(Data):
     @property
     def leaf_type(self):
         return Padder
+    
+    def to_device(self, device):
+        def _to_device(padder:Padder):
+            return padder.to_device(device)
+        return PadderData.map(_to_device, self)
 
 
 
