@@ -66,7 +66,7 @@ class LengthThresholdGrouper(LengthBasedGrouper):
                 return min_idx
             assert min_idx < max_idx 
             middle_idx = (min_idx + max_idx) // 2
-            if num >= self.thresholds[middle_idx]:
+            if num > self.thresholds[middle_idx]:
                 return _search(middle_idx + 1, max_idx)
             else:
                 return _search(min_idx, middle_idx)
