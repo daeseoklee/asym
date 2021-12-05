@@ -149,7 +149,7 @@ def example1():
         })
     }
     #The following computation is done in per-group basis 
-    result = dc.apply(Example1StrangeModule(8, 4), input_key_conv=key_conv, require_mask=False) 
+    result = dc.apply(Example1StrangeModule(8, 4), input_key_conv=key_conv) 
     result.ungroup() 
     print('\n* Shapes after applying Example1StrangeModule():')
     for data in result.data_list:
