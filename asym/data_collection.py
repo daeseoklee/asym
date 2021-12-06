@@ -39,7 +39,7 @@ class DataCollection:
 
         if padding is not None:
             if type(padding) == PadderData:
-                self.preset_padder_data = padding
+                self.preset_padder_data = PadderData(padding.value, template=self.shapesig_data.get_template())
             else:
                 self.preset_padder_data = PadderData(padding, template=self.shapesig_data.get_template())
         else:
@@ -391,9 +391,46 @@ class DataCollection:
                 data[key] = sub_data
         self.shapesig_data[key] = sub.shapesig_data
     
-    @classmethod 
-    def combine(cls, dc_dict:Union['DataCollection', Dict[str, Any]]) -> 'DataCollection':
-        pass
+    @classmethod
+    def from_dict(self, d:Dict[str, 'DataCollection']):
+        first_dc = list(d.values())[0]
+        rest_dc = list(d.values())[1:]
+        group_hash = first_dc.get_group_hash()
+        for i, dc in enumerate(rest_dc[1:]):
+            if dc.get_group_hash() != group_hash:
+                raise IncompatibleDataCollectionError(f'It seems {i+2}th DataCollection is incompatible with the first one, so you cannot combine them into a single DataCollection')
+            
+        new_shapesig_data = ShapeSignatureData.from_data_dict({key: dc.shapesig_data for key, dc in d.items()})
+        
+        if any([dc.preset_padder_data is not None for dc in d.values()]):
+            padding = {}
+            for key, dc in d.items():
+                if dc.preset_padder_data is not None:
+                    padding[key] = dc.preset_padder_data
+            padding = PadderData.from_data_dict(padding)
+        else:
+            padding = None
+        
+        def _get_merged_length_info():
+            merged_length_info = {}
+            for dc in d.values():
+                for ldim_label, info in dc.length_info.items():
+                    if ldim_label in merged_length_info and merged_length_info[ldim_label] != info:
+                        raise IncompatibleDataCollectionError(f'length_info collision for ldim_label {ldim_label} - {dc} and something else') #Should we make a new error type? 
+                    merged_length_info[ldim_label] = info
+            return merged_length_info
+        
+        if first_dc.is_grouped:
+            new_data_groups = [TensorData.from_data_dict({key: dc.data_groups[i] for key, dc in d.items()}) for i in range(len(first_dc.data_groups))]
+            
+            new_length_info = _get_merged_length_info()
+            
+            data_partition = first_dc.data_partition
+            return DataCollection(new_shapesig_data, data_groups=new_data_groups, length_info=new_length_info, data_partition=data_partition, padding=padding)
+        else:
+            new_data_list = [TensorData.from_data_dict({key: dc.data_list[i] for key, dc in d.items()}) for i in range(len(first_dc.data_list))]
+            
+            return DataCollection(new_shapesig_data, data_list=new_data_list, padding=padding)
 
 
 #testing 

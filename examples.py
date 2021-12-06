@@ -129,7 +129,12 @@ def example1():
     
     dc['duplicate'] = deepcopy(dc)
     print('\n* After __setitem__("duplicate")')
-    print(dc.shapesig_data.get_template().value) #Observe added keys
+    print(dc.shapesig_data.get_template().value) #Observe the added key
+    
+    dc = DataCollection.from_dict({'protein': dc['protein'], 'ligand': dc['ligand']})
+    print('\n* Forgetting the "duplicate"')
+    print(dc.shapesig_data.get_template().value) #Observe the deleted key
+    
 
     try:
         another_dc = deepcopy(dc)
