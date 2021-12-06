@@ -29,7 +29,7 @@ class AnnotatedModule(nn.Module, metaclass=ABCMeta):
     def __init__(self):
         super().__init__()
     @abstractmethod
-    def requires_mask(self) -> bool:
+    def get_mask_hint(self) -> str: #None, 'copy' or list of ldim labels
         pass
     @abstractmethod
     def get_input_annot(self) -> Union[str, Dict[str, Any]]:
@@ -37,7 +37,7 @@ class AnnotatedModule(nn.Module, metaclass=ABCMeta):
     @abstractmethod
     def get_output_annot(self) -> Union[str, Dict[str, Any]]:
         pass
-    def get_output_shapesig_data(self, input_shapesig_data:ShapeSignatureData, input_key_conv=None, output_key_conv=None) -> ShapeSignatureData:
+    def get_output_shapesig_data_and_mask_hint(self, input_shapesig_data:ShapeSignatureData, input_key_conv=None, output_key_conv=None) -> ShapeSignatureData:
         """
         Description:
             Given input_presig_data(parsed from self.get_input_annot()), output_presig_data(parsed from self.get_output_annot()) and input_shapesig_data, get output_shapesig_data by:
@@ -170,14 +170,27 @@ class AnnotatedModule(nn.Module, metaclass=ABCMeta):
         if output_key_conv is not None:
             output_shapesig_data = output_shapesig_data.keys_converted(output_key_conv)
             
-        return output_shapesig_data
+            
+        def _get_translated_mask_hint(mask_hint):
+            if mask_hint is None:
+                return None
+            elif mask_hint == 'copy':
+                return 'copy'
+            elif type(mask_hint) == list:
+                return [conv_ldim[ldim_label] for ldim_label in mask_hint]
+            else:
+                raise Exception(f'Invalid mask_hint for {type(self)}') 
+        mask_hint = self.get_mask_hint()
+        translated_mask_hint = _get_translated_mask_hint(mask_hint)
+            
+        return output_shapesig_data, translated_mask_hint
 
 #test-----------
 class TestModule1(AnnotatedModule):
     def __init__(self):
         super().__init__()
-    def requires_mask(self):
-        return True
+    def get_mask_hint(self):
+        return None
     def get_input_annot(self):
         return {
             '2d-feature': '(b, l_1, l_2, .., m_1)', 
@@ -191,8 +204,8 @@ class TestModule1(AnnotatedModule):
 class TestModule2(AnnotatedModule):
     def __init__(self):
         super().__init__()
-    def requires_mask(self):
-        return True
+    def get_mask_hint(self):
+        return None
     def get_input_annot(self):
         return {
             '2d-feature': '(b, l_1, l_2, .., m_1)', 
@@ -219,10 +232,11 @@ def test_annotated_module():
             'heightwise-aug': ('aug2', None)
         })
     }
-    print(TestModule1().get_output_shapesig_data(input_shapesig_data, input_key_conv=input_key_conv).value)
+    output_shapesig_data, mask_hint = TestModule1().get_output_shapesig_data_and_mask_hint(input_shapesig_data, input_key_conv=input_key_conv)
+    print(output_shapesig_data.value)
     print()
     try:
-        TestModule2().get_output_shapesig_data(input_shapesig_data, input_key_conv=input_key_conv)
+        TestModule2().get_output_shapesig_data_and_mask_hint(input_shapesig_data, input_key_conv=input_key_conv)
     except ShapeConflictError as e:
         print(f'This error was expected: {e}')
     else:

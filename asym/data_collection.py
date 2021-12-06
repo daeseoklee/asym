@@ -348,10 +348,10 @@ class DataCollection:
         if not self.is_grouped:
             raise Exception('Currently can apply AnnotatedModule only when the DataCollection is "grouped"')
         
-        output_shapesig_data = module.get_output_shapesig_data(self.shapesig_data, input_key_conv=input_key_conv, output_key_conv=output_key_conv)
+        output_shapesig_data, mask_hint = module.get_output_shapesig_data_and_mask_hint(self.shapesig_data, input_key_conv=input_key_conv, output_key_conv=output_key_conv)
         
         key_converted_data_groups = [group.keys_converted(input_key_conv) for group in self.data_groups]
-        if module.requires_mask():
+        if mask_hint is not None:
             new_data_groups = [TensorData(module(group.value, self.get_mask(i, mask_hint=mask_hint, key_conv=input_key_conv))) for i, group in enumerate(key_converted_data_groups)]
         else:
             new_data_groups = [TensorData(module(group.value)) for group in key_converted_data_groups]

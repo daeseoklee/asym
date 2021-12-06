@@ -41,8 +41,8 @@ class Example1StrangeModule(AnnotatedModule):
         dot_product = torch.sum(x1_reshaped * x2_reshaped, dim=-1)
         squared_dist = torch.sum((v1_reshaped - v2_reshaped) ** 2, dim=-1)
         return dot_product * squared_dist
-    def requires_mask(self):
-        return False
+    def get_mask_hint(self):
+        return None
     def get_input_annot(self):
         return {
             'objects1': {
